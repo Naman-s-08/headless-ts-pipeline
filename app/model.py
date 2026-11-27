@@ -12,8 +12,9 @@ import logging
 log = logging.getLogger(__name__)
 
 MODEL_ID = "unitary/toxic-bert"
-# Pin the revision (commit hash) from the model card for reproducibility:
-# REVISION = "<commit hash>"
+# Pinned HF commit for MODEL_ID (last modified 2024-03-13). Keeps scoring
+# reproducible even if the upstream model card is updated later.
+REVISION = "4d6c22e74ba2fdd26bc4f7238f50766b045a0d94"
 MAX_LENGTH = 512
 BATCH_SIZE = 16
 
@@ -30,10 +31,12 @@ class ToxicityModel:
         model_id: str = MODEL_ID,
         max_length: int = MAX_LENGTH,
         batch_size: int = BATCH_SIZE,
+        revision: str | None = REVISION,
     ) -> None:
         self.model_id = model_id
         self.max_length = max_length
         self.batch_size = batch_size
+        self.revision = revision
         self._pipe = None
 
     def load(self) -> None:
@@ -52,7 +55,7 @@ class ToxicityModel:
             self._pipe = pipeline(
                 "text-classification",
                 model=self.model_id,
-                # revision=REVISION,  # uncomment once the hash is pinned
+                revision=self.revision,
                 top_k=None,
                 device=device,
             )

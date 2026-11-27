@@ -100,7 +100,10 @@ Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_c
 
 ### Run metadata (from `results/metrics.json`)
 
-- `model_id`: `unitary/toxic-bert`; `revision`: not pinned (`null`) — see Next steps.
+- `model_id`: `unitary/toxic-bert`; `revision` in this run: not pinned (`null`),
+  but the weights were unchanged since 2024-03-13. We now pin that exact commit
+  (`4d6c22e74ba2fdd26bc4f7238f50766b045a0d94`) in `app/model.py`, so future runs
+  record and load the same revision.
 - Thresholds: allow 0.40 / review 0.80; seed 42; 3,000 rows.
 - Colab git commit: `55cf9e511bda235c8bb0b7c651f08c3152aef1e2` (develop at run time).
 - Python 3.13.18; torch 2.14.1+cpu; transformers 5.22.1; pandas 2.2.3;
@@ -112,7 +115,7 @@ Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_c
 
 ## Next steps
 
-- Pin the model `revision` (commit hash) from the model card in `app/model.py`.
+- Confirm with A/C that pinning `REVISION` in `app/model.py` is acceptable.
 - Fill the two TODOs above (6 scores + sum; load/inference time).
 - Record the `HF_HUB_OFFLINE=1` reload result.
 - Count token sequences above 512 and settle decision D4 using these baseline numbers.

@@ -39,6 +39,7 @@ from sklearn.metrics import (  # noqa: E402
     roc_auc_score,
 )
 
+from app.model import REVISION  # noqa: E402  (no torch import at module load)
 from app.policy import decide  # noqa: E402
 
 MODEL_ID = "unitary/toxic-bert"
@@ -198,7 +199,7 @@ def main() -> None:
     eval_parser.add_argument("--allow", type=float, default=DEFAULT_ALLOW)
     eval_parser.add_argument("--review", type=float, default=DEFAULT_REVIEW)
     eval_parser.add_argument("--model-id", default=MODEL_ID)
-    eval_parser.add_argument("--revision", default=None)
+    eval_parser.add_argument("--revision", default=REVISION)
 
     args = parser.parse_args()
     if args.command == "score":
