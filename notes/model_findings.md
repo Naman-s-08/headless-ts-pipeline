@@ -1,7 +1,8 @@
 # Model findings (Person B)
 
 Evidence from running `unitary/toxic-bert` by hand in Google Colab on 18 Nov 2026,
-before writing production code (playbook rule: run the model first).
+before writing production code (playbook rule: run the model first). Additional
+timing/offline/token measurements were taken on 27 Nov 2026 after the baseline run.
 
 ## Setup
 
@@ -11,7 +12,13 @@ before writing production code (playbook rule: run the model first).
 - Device: Colab default (CPU unless a GPU runtime is selected)
 - `top_k=None`, `truncation=True`, `max_length=512`
 
-> TODO: record exact load time and per-batch inference time in Colab.
+Measured on Colab CPU with the pinned revision (`results/evidence.json`):
+
+- Model load (cached weights, includes warm-up call): **2.3 s**. The very first
+  download of `model.safetensors` took ~2 s for 438 MB on Colab's network.
+- Inference on 100 val rows, `batch_size=16`, `max_length=512`: **88.98 s**
+  (~**890 ms/row**, ~**12.7 s per batch of 16**). This is why the 3,000-row
+  baseline takes ~10-15 min on CPU; a T4 GPU is recommended for full runs.
 
 ## Output format
 
@@ -21,7 +28,21 @@ before writing production code (playbook rule: run the model first).
 - Single string vs list input have different nesting; `predict_batch()` normalises both.
 - We read the `toxic` score **by label name**, not by position.
 
-> TODO: paste the 6 scores and their sum from the extra Colab check.
+For `you are an idiot` (single `top_k=None` call, pinned revision):
+
+| Label | Score |
+|---|---:|
+| toxic | 0.986101 |
+| insult | 0.959979 |
+| obscene | 0.756419 |
+| severe_toxic | 0.045554 |
+| identity_hate | 0.014150 |
+| threat | 0.001331 |
+| **Sum** | **2.763533** |
+
+The sum is ~2.76, not 1 — direct evidence that these are independent multi-label
+probabilities. `insult` and `obscene` are also high, which supports testing the
+max-of-6 scoring rule in D4.
 
 ## Smoke results
 
@@ -108,14 +129,21 @@ Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_c
 - Colab git commit: `55cf9e511bda235c8bb0b7c651f08c3152aef1e2` (develop at run time).
 - Python 3.13.18; torch 2.14.1+cpu; transformers 5.22.1; pandas 2.2.3;
   scikit-learn 1.6.1; matplotlib 3.10.0.
-- The scoring log showed a 588-token comment truncated to `max_length=512` —
-  expected behaviour; exact count of >512-token rows still TODO.
+- Token-length audit of all 3,000 val rows: **68 rows (2.27%) exceed 512 tokens**,
+  longest is 2,351 tokens. The 588-token comment seen in the scoring log is one
+  of these; all are truncated to `max_length=512` by the wrapper.
 
 > This is the "before" number. Week 4 tunes thresholds on val and touches test exactly once.
+
+## Offline reload check
+
+With `HF_HUB_OFFLINE=1` set in Colab, a fresh `pipeline(...)` loaded from the local
+HF cache in **0.35 s** and scored a sample sentence successfully (`OK`). So after
+the first download, the model works with no network access — important for the
+headless/offline deployment path.
 
 ## Next steps
 
 - Confirm with A/C that pinning `REVISION` in `app/model.py` is acceptable.
-- Fill the two TODOs above (6 scores + sum; load/inference time).
-- Record the `HF_HUB_OFFLINE=1` reload result.
-- Count token sequences above 512 and settle decision D4 using these baseline numbers.
+- **Week 4:** settle D4 (`toxic` score vs max-of-6) using val PR-AUC/recall,
+  then tune thresholds on val and touch `test.csv` exactly once.
