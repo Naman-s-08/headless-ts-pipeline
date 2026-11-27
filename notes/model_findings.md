@@ -58,9 +58,34 @@ decide(0.81) -> BLOCK
 decide(1.00) -> BLOCK
 ```
 
+## Week 3 baseline — val set (fill from Colab)
+
+Source: `data/processed/val.csv` — 3,000 rows, toxic 9.77%, seed 42.
+Split verified reproducible (identical SHA256 hashes on two runs).
+Command: `python scripts/evaluate.py evaluate --scores results/val_scores.csv --allow 0.40 --review 0.80`
+
+| Metric | Value |
+|---|---|
+| Precision (toxic) | ___ |
+| Recall (toxic) | ___ |
+| F1 (toxic) | ___ |
+| Macro F1 | ___ |
+| Weighted F1 | ___ |
+| PR-AUC (average precision) | ___ |
+| ROC-AUC | ___ |
+| ALLOW count | ___ |
+| REVIEW count | ___ |
+| BLOCK count | ___ |
+| REVIEW fraction (human workload) | ___% |
+| Confusion matrix (TN, FP, FN, TP) | ___ |
+
+Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_curve.png`.
+
+> This is the "before" number. Week 4 tunes thresholds on val and touches test exactly once.
+
 ## Next steps
 
 - Pin the model `revision` (commit hash) from the model card in `app/model.py`.
-- Add `torch` and `transformers` to `requirements.txt`.
-- Add slow smoke tests in `tests/test_model.py`.
-- Copy the 6-score / sum output into this file.
+- Fill the two TODOs above (6 scores + sum; load/inference time).
+- Record the `HF_HUB_OFFLINE=1` reload result.
+- Fill the Week 3 baseline table with the numbers from Colab.
