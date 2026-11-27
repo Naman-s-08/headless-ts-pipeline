@@ -76,18 +76,24 @@ class ToxicityModel:
             )
 
     @staticmethod
-    def _toxic_score(scores: list[dict]) -> float:
+    def _toxic_from_mapping(scores: dict[str, float]) -> float:
         """Read the toxic probability by label name, never by list position."""
-        by_name = {item["label"]: item["score"] for item in scores}
         try:
-            return by_name["toxic"]
+            return scores["toxic"]
         except KeyError as exc:
             raise ValueError(
                 f"missing 'toxic' label in model output: {scores}"
             ) from exc
 
-    def predict_batch(self, texts: list[str]) -> list[tuple[str, float]]:
-        """Return (label, toxic score) for each text, preserving input order."""
+    @staticmethod
+    def _toxic_score(scores: list[dict]) -> float:
+        """Backward-compatible wrapper for raw pipeline output."""
+        return ToxicityModel._toxic_from_mapping(
+            {item["label"]: item["score"] for item in scores}
+        )
+
+    def predict_scores_batch(self, texts: list[str]) -> list[dict[str, float]]:
+        """Return all six independent label probabilities per text (D4 input)."""
         if not texts:
             return []
 
@@ -105,9 +111,19 @@ class ToxicityModel:
         if outputs and isinstance(outputs[0], dict):
             outputs = [outputs]
 
+        return [
+            {item["label"]: float(item["score"]) for item in scores}
+            for scores in outputs
+        ]
+
+    def predict_batch(self, texts: list[str]) -> list[tuple[str, float]]:
+        """Return (label, toxic score) for each text, preserving input order."""
+        if not texts:
+            return []
+
         results: list[tuple[str, float]] = []
-        for scores in outputs:
-            score = self._toxic_score(scores)
+        for scores in self.predict_scores_batch(texts):
+            score = self._toxic_from_mapping(scores)
             results.append(("toxic" if score >= 0.5 else "non_toxic", score))
         return results
 
