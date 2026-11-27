@@ -15,8 +15,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 
 SEED = 42
 VAL_SIZE = 3_000
@@ -30,6 +30,36 @@ LABELS = [
     "identity_hate",
 ]
 OUTPUT_COLUMNS = ["id", "comment_text", "label", *LABELS]
+
+
+def stratified_split(
+    df: pd.DataFrame, size: int, seed: int, label_col: str = "label"
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Deterministic stratified split without sklearn/scipy.
+
+    Keeps the class ratio by sampling proportionally from each class with a
+    seeded numpy generator. The remainder is returned for the next split.
+    """
+    rng = np.random.default_rng(seed)
+    picked: list[int] = []
+
+    for label_value, count in df[label_col].value_counts().sort_index().items():
+        indices = df.index[df[label_col] == label_value].to_numpy().copy()
+        rng.shuffle(indices)
+        take = round(size * count / len(df))
+        picked.extend(indices[:take].tolist())
+
+    if len(picked) < size:
+        remaining = df.index[~df.index.isin(picked)].to_numpy().copy()
+        rng.shuffle(remaining)
+        picked.extend(remaining[: size - len(picked)].tolist())
+    elif len(picked) > size:
+        picked = picked[:size]
+
+    rng.shuffle(picked)
+    selected = df.loc[picked].copy()
+    rest = df.drop(index=picked).copy()
+    return selected, rest
 
 
 def build_splits(
@@ -52,18 +82,8 @@ def build_splits(
     print(f"Dropped {dropped} unscored rows (label = -1).")
     print(f"Scored pool: {len(df)} rows, toxic {df['label'].mean():.2%}")
 
-    val, rest = train_test_split(
-        df,
-        train_size=val_size,
-        stratify=df["label"],
-        random_state=seed,
-    )
-    test, _ = train_test_split(
-        rest,
-        train_size=test_size,
-        stratify=rest["label"],
-        random_state=seed,
-    )
+    val, rest = stratified_split(df, val_size, seed)
+    test, _ = stratified_split(rest, test_size, seed)
 
     val = val[OUTPUT_COLUMNS].reset_index(drop=True)
     test = test[OUTPUT_COLUMNS].reset_index(drop=True)
