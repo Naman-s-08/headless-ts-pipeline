@@ -58,28 +58,55 @@ decide(0.81) -> BLOCK
 decide(1.00) -> BLOCK
 ```
 
-## Week 3 baseline — val set (fill from Colab)
+## Week 3 baseline — val set
 
 Source: `data/processed/val.csv` — 3,000 rows, toxic 9.77%, seed 42.
 Split verified reproducible (identical SHA256 hashes on two runs).
-Command: `python scripts/evaluate.py evaluate --scores results/val_scores.csv --allow 0.40 --review 0.80`
+Scored in Colab with:
+
+```
+!PYTHONPATH=. python scripts/evaluate.py score --input data/processed/val.csv --scores results/val_scores.csv
+!PYTHONPATH=. python scripts/evaluate.py evaluate --scores results/val_scores.csv --allow 0.40 --review 0.80
+```
 
 | Metric | Value |
 |---|---|
-| Precision (toxic) | ___ |
-| Recall (toxic) | ___ |
-| F1 (toxic) | ___ |
-| Macro F1 | ___ |
-| Weighted F1 | ___ |
-| PR-AUC (average precision) | ___ |
-| ROC-AUC | ___ |
-| ALLOW count | ___ |
-| REVIEW count | ___ |
-| BLOCK count | ___ |
-| REVIEW fraction (human workload) | ___% |
-| Confusion matrix (TN, FP, FN, TP) | ___ |
+| Precision (toxic) | 0.5150 |
+| Recall (toxic) | 0.9352 |
+| F1 (toxic) | 0.6642 |
+| Macro F1 | 0.8054 |
+| Weighted F1 | 0.9189 |
+| Accuracy | 0.9077 |
+| PR-AUC (average precision) | 0.8108 |
+| ROC-AUC | 0.9730 |
+| ALLOW count | 2,468 (82.27%) |
+| REVIEW count | 194 (6.47%) |
+| BLOCK count | 338 (11.27%) |
+| REVIEW fraction (human workload) | 6.47% |
+| Confusion matrix (TN, FP, FN, TP) | 2,449 / 258 / 19 / 274 |
 
-Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_curve.png`.
+Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_curve.png`
+(downloaded from Colab; `metrics.json` used for this write-up).
+
+### Interpretation
+
+- PR-AUC 0.8108 is ~8.3x the 0.0977 random baseline — ranking works well.
+- At the 0.40 operating threshold recall is high (0.9352) but precision is only
+  0.5150: 258 false positives vs 274 true positives. The `I will kill this bug`
+  idiom above is a likely contributor. Week 4 should compare raising the BLOCK
+  threshold with moving the 0.40-0.80 band into REVIEW instead of auto-BLOCK.
+- Only 19 toxic comments were missed (FN), so recall is not the weak point here.
+- REVIEW workload is 6.47% of 3,000 = 194 comments — a realistic human queue.
+
+### Run metadata (from `results/metrics.json`)
+
+- `model_id`: `unitary/toxic-bert`; `revision`: not pinned (`null`) — see Next steps.
+- Thresholds: allow 0.40 / review 0.80; seed 42; 3,000 rows.
+- Colab git commit: `55cf9e511bda235c8bb0b7c651f08c3152aef1e2` (develop at run time).
+- Python 3.13.18; torch 2.14.1+cpu; transformers 5.22.1; pandas 2.2.3;
+  scikit-learn 1.6.1; matplotlib 3.10.0.
+- The scoring log showed a 588-token comment truncated to `max_length=512` —
+  expected behaviour; exact count of >512-token rows still TODO.
 
 > This is the "before" number. Week 4 tunes thresholds on val and touches test exactly once.
 
@@ -88,4 +115,4 @@ Artifacts: `results/metrics.json`, `results/confusion_matrix.png`, `results/pr_c
 - Pin the model `revision` (commit hash) from the model card in `app/model.py`.
 - Fill the two TODOs above (6 scores + sum; load/inference time).
 - Record the `HF_HUB_OFFLINE=1` reload result.
-- Fill the Week 3 baseline table with the numbers from Colab.
+- Count token sequences above 512 and settle decision D4 using these baseline numbers.
