@@ -5,3 +5,7 @@ pytest==8.3.0
 
 torch
 transformers
+pandas
+scikit-learn
+matplotlib
+jupyter
